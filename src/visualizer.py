@@ -94,10 +94,8 @@ def plot_shelf_layout(best_layout: pd.DataFrame,  n_racks: int = 4,  n_shelves: 
         plt.close()
 
 
-def plot_pareto_front(pareto_F: np.ndarray,
-                      best_idx: int = None,
-                      ax=None,
-                      save_path: str = None):
+def plot_pareto_front(pareto_F: np.ndarray, best_idx: int = None, ax=None, save_path: str = None):
+    standalone = ax is None 
     if standalone:
         fig, ax = plt.subplots(figsize=(8, 5))
 
