@@ -36,7 +36,7 @@ Create a virtual environment so packages don't mix with your system Python
 
 ```bash
 python3 -m venv venv
-source venv/bin/activate
+.\venv\Scripts\Activate.ps1
 ```
 
 Install all the required packages
