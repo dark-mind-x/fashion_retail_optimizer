@@ -35,7 +35,7 @@ cd fashion_retail_optimizer
 Create a virtual environment so packages don't mix with your system Python
 
 ```bash
-python3 -m venv venv
+python -m venv venv
 .\venv\Scripts\Activate.ps1
 ```
 
