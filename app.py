@@ -26,12 +26,18 @@ from data_loader import load_all
 from optimizer   import run_optimizer
 from visualizer  import plot_shelf_layout, plot_pareto_front, plot_before_after
 
+# =============================================================================
+#  PAGE CONFIG — must be the very first Streamlit call
+# =============================================================================
 st.set_page_config(
     page_title = "Fashion Retail Optimizer",
     page_icon  = "🛍️",
     layout     = "wide",
 )
 
+# =============================================================================
+#  CUSTOM CSS — clean, minimal styling
+# =============================================================================
 st.markdown("""
 <style>
     .kpi-box {
@@ -55,18 +61,27 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+# =============================================================================
+#  LOAD DATA — cached so it only reads the Excel file once
+# =============================================================================
 @st.cache_data
 def get_data():
     return load_all()
 
 
-st.title("Fashion Retail Shelf Optimizer")
-st.caption("Multi-objective shelf layout optimization using NSGA-II")
+# =============================================================================
+#  HEADER
+# =============================================================================
+st.title("🛍️ Fashion Retail Shelf Optimizer")
+st.caption("Multi-objective shelf layout optimization using NSGA-II  ·  Anna University Final Year Project")
 st.divider()
 
 
+# =============================================================================
+#  SIDEBAR — optimizer settings
+# =============================================================================
 with st.sidebar:
-    st.header("Optimizer Settings")
+    st.header("⚙️ Optimizer Settings")
     st.caption("Adjust these before running the optimizer.")
 
     pop_size = st.slider(
@@ -97,12 +112,18 @@ with st.sidebar:
 
     st.divider()
     st.caption("**Project Info**")
-    st.caption("Student: Name")
+    st.caption("Student: Sheik Anfal Khan")
+    st.caption("Dept: ECE, 6th Semester")
+    st.caption("University: Anna University")
 
 
+# =============================================================================
+#  LOAD DATA
+# =============================================================================
 data = get_data()
 
-with st.expander("View raw input data"):
+# Show raw data tables in an expander (optional)
+with st.expander("📂 View raw input data"):
     tab1, tab2, tab3 = st.tabs(["Products", "Shelves", "Cross-Sell Pairs"])
     with tab1:
         st.dataframe(data["products"], use_container_width=True)
@@ -112,6 +133,9 @@ with st.expander("View raw input data"):
         st.dataframe(data["cross_sell"], use_container_width=True)
 
 
+# =============================================================================
+#  RUN OPTIMIZER
+# =============================================================================
 if run_btn:
 
     with st.spinner("Running NSGA-II optimizer ... this takes about 30–60 seconds."):
@@ -122,6 +146,9 @@ if run_btn:
     st.success("Optimization complete!")
 
 
+# =============================================================================
+#  RESULTS — only shown after optimizer has run
+# =============================================================================
 if "result" in st.session_state:
     result      = st.session_state["result"]
     best_layout = result["best_layout"]
@@ -129,7 +156,8 @@ if "result" in st.session_state:
     improvement = result["improvement"]
     best_idx    = int(np.argmin(pareto_F[:, 0]))
 
-    st.markdown('<div class="section-title">Key Results</div>', unsafe_allow_html=True)
+    # ── KPI Cards ─────────────────────────────────────────────────────────────
+    st.markdown('<div class="section-title">📊 Key Results</div>', unsafe_allow_html=True)
 
     col1, col2, col3, col4 = st.columns(4)
 
@@ -171,19 +199,21 @@ if "result" in st.session_state:
 
     st.divider()
 
-    st.markdown('<div class="section-title">Optimized Shelf Layout</div>', unsafe_allow_html=True)
+    # ── Chart 1 : Shelf Layout ─────────────────────────────────────────────
+    st.markdown('<div class="section-title">🗂️ Optimized Shelf Layout</div>', unsafe_allow_html=True)
     fig1, ax1 = plt.subplots(figsize=(14, 5))
-    plot_shelf_layout(best_layout, ax=ax1)
+    plot_shelf_layout(best_layout, ax=ax1, cross_sell=data["cross_sell"])
     plt.tight_layout()
     st.pyplot(fig1)
     plt.close(fig1)
 
     st.divider()
 
+    # ── Charts 2 & 3 side by side ─────────────────────────────────────────
     col_left, col_right = st.columns(2)
 
     with col_left:
-        st.markdown('<div class="section-title">Pareto Front</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">📈 Pareto Front</div>', unsafe_allow_html=True)
         fig2, ax2 = plt.subplots(figsize=(7, 4))
         plot_pareto_front(pareto_F, best_idx=best_idx, ax=ax2)
         plt.tight_layout()
@@ -191,7 +221,7 @@ if "result" in st.session_state:
         plt.close(fig2)
 
     with col_right:
-        st.markdown('<div class="section-title">Before vs After</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">📊 Before vs After</div>', unsafe_allow_html=True)
         fig3, ax3 = plt.subplots(figsize=(7, 4))
         plot_before_after(best_layout, data, ax=ax3)
         plt.tight_layout()
@@ -200,7 +230,33 @@ if "result" in st.session_state:
 
     st.divider()
 
-    st.markdown('<div class="section-title">Optimized Layout Detail</div>', unsafe_allow_html=True)
+    # ── Cross-Sell Analysis ────────────────────────────────────────────────
+    st.markdown('<div class="section-title">🔗 Cross-Selling Analysis</div>', unsafe_allow_html=True)
+    st.caption("Gold border (↔) on shelf layout = these two products are on the same shelf and will drive cross-sales.")
+
+    cross_df = data["cross_sell"].copy()
+    rows = []
+    for _, row in cross_df.iterrows():
+        p1, p2, score = row["Product_1"], row["Product_2"], row["Cross_Selling_Score"]
+        loc1 = best_layout[best_layout["Product_Name"] == p1]["Location_ID"].values
+        loc2 = best_layout[best_layout["Product_Name"] == p2]["Location_ID"].values
+        if len(loc1) and len(loc2):
+            same_shelf = "✅ Same shelf" if loc1[0] == loc2[0] else "❌ Different shelves"
+            rows.append({
+                "Product 1"       : p1,
+                "Product 2"       : p2,
+                "Cross-Sell Score": int(score),
+                "Placement"       : same_shelf,
+                "Location 1"      : loc1[0],
+                "Location 2"      : loc2[0],
+            })
+    if rows:
+        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+    st.divider()
+
+    # ── Result Table ───────────────────────────────────────────────────────
+    st.markdown('<div class="section-title">📋 Optimized Layout Detail</div>', unsafe_allow_html=True)
 
     display_cols = [
         "Product_Name", "Location_ID", "Facings",
@@ -217,8 +273,9 @@ if "result" in st.session_state:
 
     st.dataframe(display_df, use_container_width=True, hide_index=True)
 
+    # ── Download Button ────────────────────────────────────────────────────
     st.divider()
-    st.markdown('<div class="section-title">Export Results</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">⬇️ Export Results</div>', unsafe_allow_html=True)
 
     csv = best_layout.to_csv(index=False).encode("utf-8")
     st.download_button(
@@ -229,9 +286,10 @@ if "result" in st.session_state:
     )
 
 else:
-    st.info(" Adjust settings in the sidebar and click **Run Optimizer** to start.")
+    # ── Placeholder before running ─────────────────────────────────────────
+    st.info("👈  Adjust settings in the sidebar and click **Run Optimizer** to start.", icon="ℹ️")
 
-    st.markdown('<div class="section-title">Products loaded from Excel</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">📦 Products loaded from Excel</div>', unsafe_allow_html=True)
     preview_cols = ["Product_ID", "Product_Name", "Monthly_Demand",
                     "Unit_Profit", "Unit_Weight_kg", "Min_Facing", "Max_Facing"]
     st.dataframe(data["products"][preview_cols], use_container_width=True, hide_index=True)
